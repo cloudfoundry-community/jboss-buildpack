@@ -17,17 +17,26 @@
 ---
 containers:
   - "JavaBuildpack::Container::Groovy"
-  - "JavaBuildpack::Container::Main"
-  - "JavaBuildpack::Container::Play"
-  - "JavaBuildpack::Container::SpringBootCli"
+  - "JavaBuildpack::Container::JavaMain"
   - "JavaBuildpack::Container::Jboss"
+  - "JavaBuildpack::Container::PlayFramework"
+  - "JavaBuildpack::Container::Ratpack"
+  - "JavaBuildpack::Container::SpringBootCLI"
+#  - "JavaBuildpack::Container::Tomcat"
+
+# In order to use Oracle JREs instead of OpenJDK, you must comment out the OpenJDK line and uncomment the Oracle line.
+# Please see the documentation for more detail.
 jres:
-  - "JavaBuildpack::Jre::OpenJdk"
+  - "JavaBuildpack::Jre::OpenJdkJRE"
+# - "JavaBuildpack::Jre::OracleJRE"
+
 frameworks:
-  - "JavaBuildpack::Framework::AppDynamics"
+  - "JavaBuildpack::Framework::AppDynamicsAgent"
   - "JavaBuildpack::Framework::JavaOpts"
-  - "JavaBuildpack::Framework::NewRelic"
-  - "JavaBuildpack::Framework::SpringInsight"
-  - "JavaBuildpack::Framework::PlayAutoReconfiguration"
-  - "JavaBuildpack::Framework::PlayJpaPlugin"
+  - "JavaBuildpack::Framework::MariaDbJDBC"
+  - "JavaBuildpack::Framework::NewRelicAgent"
+  - "JavaBuildpack::Framework::PlayFrameworkAutoReconfiguration"
+  - "JavaBuildpack::Framework::PlayFrameworkJPAPlugin"
+  - "JavaBuildpack::Framework::PostgresqlJDBC"
   - "JavaBuildpack::Framework::SpringAutoReconfiguration"
+  - "JavaBuildpack::Framework::SpringInsight"

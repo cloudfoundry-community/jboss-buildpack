@@ -17,51 +17,69 @@
 require 'pathname'
 require 'java_buildpack/util'
 
-module JavaBuildpack::Util
+module JavaBuildpack
+  module Util
 
-  # Utilities for dealing with Groovy applications
-  class GroovyUtils
+    # Utilities for dealing with Groovy applications
+    class GroovyUtils
 
-    # Indicates whether a file has a +main()+ method in it
-    #
-    # @param [File] file the file to scan
-    # @return [Boolean] +true+ if the file contains a +main()+ method, +false+ otherwise.
-    def self.main_method?(file)
-      file.read =~ /static void main\(/
+      private_class_method :new
+
+      class << self
+
+        # Indicates whether a file is a +beans+style configuration
+        #
+        # @param [File] file the file to scan
+        # @return [Boolean] +true+ if the file is a +beans+style configuration, +false+ otherwise.
+        def beans?(file)
+          safe_read(file) { Pathname.new(file).read =~ /beans[\s]*\{/ }
+        end
+
+        # Indicates whether a file has a +main()+ method in it
+        #
+        # @param [File] file the file to scan
+        # @return [Boolean] +true+ if the file contains a +main()+ method, +false+ otherwise.
+        def main_method?(file)
+          safe_read(file) { Pathname.new(file).read =~ /static void main\(/ }
+        end
+
+        # Indicates whether a file is a POGO
+        #
+        # @param [File] file the file to scan
+        # @return [Boolean] +true+ if the file is a POGO, +false+ otherwise.
+        def pogo?(file)
+          safe_read(file) { Pathname.new(file).read =~ /class [\w]+[\s\w]*\{/ }
+        end
+
+        # Indicates whether a file has a shebang
+        #
+        # @param [File] file the file to scan
+        # @return [Boolean] +true+ if the file has a shebang, +false+ otherwise.
+        def shebang?(file)
+          safe_read(file) { Pathname.new(file).read =~ /#!/ }
+        end
+
+        # Returns all the Ruby files in the given directory
+        #
+        # @param [JavaBuildpack::Component::Application] application the application to search
+        # @return [Array] a possibly empty list of files
+        def groovy_files(application)
+          (application.root + GROOVY_FILE_PATTERN).glob.reject { |path| path.directory? }.sort
+        end
+
+        private
+
+        GROOVY_FILE_PATTERN = '**/*.groovy'.freeze
+
+        def safe_read(file)
+          yield
+        rescue => e
+          raise "Unable to read file #{file.path}: #{e.message}"
+        end
+
+      end
+
     end
-
-    # Indicates whether a file is a POGO
-    #
-    # @param [File] file the file to scan
-    # @return [Boolean] +true+ if the file is a POGO, +false+ otherwise.
-    def self.pogo?(file)
-      file.read =~ /class [\w]+ [\s\w]*{/
-    end
-
-    # Indicates whether a file has a shebang
-    #
-    # @param [File] file the file to scan
-    # @return [Boolean] +true+ if the file has a shebang, +false+ otherwise.
-    def self.shebang?(file)
-      file.read =~ /#!/
-    end
-
-    # Returns all the Ruby files in the given directory
-    #
-    # @param [String] root a directory to search
-    # @return [Array] a possibly empty list of files
-    def self.groovy_files(root)
-      root_directory = Pathname.new(root)
-      Dir[File.join root, GROOVY_FILE_PATTERN].reject { |file| File.directory? file }
-          .map { |file| Pathname.new(file).relative_path_from(root_directory).to_s }.sort
-    end
-
-    private_class_method :new
-
-    private
-
-    GROOVY_FILE_PATTERN = '**/*.groovy'.freeze
 
   end
-
 end

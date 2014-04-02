@@ -1,4 +1,4 @@
-#!/usr/bin/env groovy -w
+#!/usr/bin/env groovy
 /*
  * Copyright 2013 the original author or authors.
  *

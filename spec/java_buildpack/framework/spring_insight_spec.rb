@@ -15,82 +15,55 @@
 # limitations under the License.
 
 require 'spec_helper'
+require 'component_helper'
 require 'fileutils'
-require 'java_buildpack/application'
 require 'java_buildpack/framework/spring_insight'
 
-module JavaBuildpack::Framework
+describe JavaBuildpack::Framework::SpringInsight do
+  include_context 'component_helper'
 
-  describe SpringInsight do
+  it 'should not detect without spring-insight-n/a service' do
+    expect(component.detect).to be_nil
+  end
 
-    let(:application_cache) { double('ApplicationCache') }
-    let(:java_opts) { [] }
-    let(:vcap_application) { {} }
-    let(:vcap_services) { {} }
+  context do
 
     before do
-      $stdout = StringIO.new
-      $stderr = StringIO.new
+      allow(services).to receive(:one_service?).with(/insight/, 'dashboard_url', 'agent_username', 'agent_password').and_return(true)
+      allow(services).to receive(:find_service).and_return('label'       => 'insight-1.0',
+                                                           'credentials' => { 'dashboard_url' => 'test-uri', 'agent_password' => 'foo', 'agent_username' => 'bar' })
+      allow(application_cache).to receive(:get).with('test-uri/services/config/agent-download')
+                                  .and_yield(Pathname.new('spec/fixtures/stub-insight-agent.jar').open, false)
     end
 
     it 'should detect with spring-insight-n/a service' do
-      vcap_services['insight-n/a'] = [{ 'label' => 'insight-1.0', 'credentials' => { 'dashboard_url' => 'test-uri' } }]
-      vcap_application['application_name'] = 'test-application-name'
-
-      detected = SpringInsight.new(
-              vcap_application: vcap_application,
-              vcap_services: vcap_services
-      ).detect
-
-      expect(detected).to eq('spring-insight=1.0')
+      expect(component.detect).to eq('spring-insight=1.0')
     end
 
     it 'should extract Spring Insight from the Uber Agent zip file inside the Agent Installer jar' do
-      Dir.mktmpdir do |root|
-        JavaBuildpack::Util::DownloadCache.stub(:new).and_return(application_cache)
-        application_cache.stub(:get).with('test-uri/services/config/agent-download').and_yield(File.open('spec/fixtures/stub-insight-agent.jar'))
-        vcap_services['insight-n/a'] = [{ 'label' => 'insight-1.0', 'credentials' => { 'dashboard_url' => 'test-uri/' } }]
-        vcap_application['application_name'] = 'test-application-name'
+      component.compile
 
-        container_libs_directory = File.join root, '.container-libs'
-        extra_apps_directory = File.join root, '.extra-applications'
+      container_libs_dir = app_dir + '.spring-insight/container-libs'
 
-        SpringInsight.new(
-                app_dir: root,
-                vcap_application: vcap_application,
-                vcap_services: vcap_services
-        ).compile
-
-        insight_home = File.join root, '.insight'
-        expect(File.exists? File.join(insight_home, 'weaver', 'insight-weaver-1.2.4-CI-SNAPSHOT.jar')).to be_true
-        expect(File.exists? File.join(container_libs_directory, 'insight-bootstrap-generic-1.2.3-CI-SNAPSHOT.jar')).to be_true
-        expect(File.exists? File.join(container_libs_directory, 'insight-bootstrap-tomcat-common-1.2.5-CI-SNAPSHOT.jar')).to be_true
-        expect(File.exists? File.join(insight_home, 'insight', 'conf', 'insight.properties')).to be_true
-        expect(File.exists? File.join(insight_home, 'insight', 'collection-plugins', 'test-collection-plugins')).to be_true
-        expect(File.exists? File.join(extra_apps_directory, 'insight-agent')).to be_true
-      end
+      expect(sandbox + 'weaver/insight-weaver-cf-2.0.0-CI-SNAPSHOT.jar').to exist
+      expect(container_libs_dir + 'insight-bootstrap-generic-2.0.0-CI-SNAPSHOT.jar').to exist
+      expect(container_libs_dir + 'insight-bootstrap-tomcat-common-2.0.0-CI-SNAPSHOT.jar').to exist
+      expect(sandbox + 'insight/conf/insight.properties').to exist
     end
 
-    it 'should update JAVA_OPTS' do
-      vcap_application['application_name'] = 'test-application-name'
-      vcap_services['insight-n/a'] = [{ 'label' => 'insight-1.0', 'credentials' => { 'dashboard_url' => 'test-uri' } }]
+    it 'should update JAVA_OPTS',
+       app_fixture: 'framework_spring_insight' do
 
-      SpringInsight.new(
-              app_dir: 'spec/fixtures/framework_spring_insight',
-              application: JavaBuildpack::Application.new('spec/fixtures/framework_spring_insight'),
-              java_opts: java_opts,
-              vcap_application: vcap_application,
-              vcap_services: vcap_services
-      ).release
+      component.release
 
-      expect(java_opts).to include('-javaagent:.insight/weaver/insight-weaver-1.2.4-CI-SNAPSHOT.jar')
-      expect(java_opts).to include('-Dinsight.base=.insight/insight')
-      expect(java_opts).to include('-Dinsight.logs=.insight/insight/logs')
+      expect(java_opts).to include('-javaagent:$PWD/.java-buildpack/spring_insight/weaver/insight-weaver-1.2.4-CI-SNAPSHOT.jar')
+      expect(java_opts).to include('-Dinsight.base=$PWD/.java-buildpack/spring_insight/insight')
+      expect(java_opts).to include('-Dinsight.logs=$PWD/.java-buildpack/spring_insight/insight/logs')
       expect(java_opts).to include('-Daspectj.overweaving=true')
       expect(java_opts).to include('-Dorg.aspectj.tracing.factory=default')
-      expect(java_opts).to include('-Dagent.name.override=test-application-name')
+      expect(java_opts).to include('-Dagent.http.username=bar')
+      expect(java_opts).to include('-Dagent.http.password=foo')
     end
-
   end
 
 end

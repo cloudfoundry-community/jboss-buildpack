@@ -14,35 +14,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-require 'logger'
 require 'spec_helper'
+require 'application_helper'
+require 'logging_helper'
 require 'java_buildpack/buildpack'
 require 'java_buildpack/util/java_main_utils'
 
-module JavaBuildpack::Util
+describe JavaBuildpack::Util::JavaMainUtils do
+  include_context 'application_helper'
+  include_context 'logging_helper'
 
-  describe JavaMainUtils do
+  let(:test_class_name) { 'test-java-main-class' }
 
-    TEST_CLASS_NAME = 'test-java-main-class'
+  it 'should use a main class configuration in a configuration file' do
+    allow(JavaBuildpack::Util::ConfigurationUtils).to receive(:load).with('java_main')
+                                                      .and_return('java_main_class' => test_class_name)
 
-    it 'should use a main class configuration in a configuration file' do
-      JavaBuildpack::Buildpack.stub(:configuration).with('JavaMain', kind_of(Logger)) do
-        { 'java_main_class' => TEST_CLASS_NAME }
-      end
-      JavaBuildpack::Util::JavaMainUtils.main_class('').should eq(TEST_CLASS_NAME)
-    end
+    expect(described_class.main_class(application)).to eq(test_class_name)
+  end
 
-    it 'should use a main class configuration in a configuration parameter' do
-      JavaBuildpack::Util::JavaMainUtils.main_class('', { 'java_main_class' => TEST_CLASS_NAME }).should eq(TEST_CLASS_NAME)
-    end
+  it 'should use a main class configuration in a configuration parameter' do
+    expect(described_class.main_class(application, 'java_main_class' => test_class_name)).to eq(test_class_name)
+  end
 
-    it 'should use a main class in the manifest of the application' do
-      JavaBuildpack::Buildpack.stub(:configuration).with('JavaMain', kind_of(Logger)) do
-        {}
-      end
-      JavaBuildpack::Util::JavaMainUtils.main_class('spec/fixtures/container_main').should eq('test-main-class')
-    end
+  it 'should use a main class in the manifest of the application',
+     app_fixture: 'container_main' do
 
+    expect(described_class.main_class(application)).to eq('test-main-class')
   end
 
 end

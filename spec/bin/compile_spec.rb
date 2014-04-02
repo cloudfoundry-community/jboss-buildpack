@@ -15,15 +15,21 @@
 # limitations under the License.
 
 require 'spec_helper'
-require 'open3'
-require 'tmpdir'
+require 'integration_helper'
 
 describe 'compile script', :integration do
+  include_context 'integration_helper'
+
+  it 'should return zero if success',
+     app_fixture: 'integration_valid' do
+
+    run("bin/compile #{app_dir} #{app_dir + '.cache'}") { |status| expect(status).to be_success }
+  end
 
   it 'should fail to compile when no containers detect' do
-    Dir.mktmpdir do |root|
-      error = Open3.capture3("bin/compile #{root} #{root}")[1]
-      expect(error).to match(/No container can run the application/)
+    run("bin/compile #{app_dir} #{app_dir + '.cache'}") do |status|
+      expect(status).not_to be_success
+      expect(stderr.string).to match(/No container can run this application/)
     end
   end
 

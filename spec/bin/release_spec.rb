@@ -15,37 +15,21 @@
 # limitations under the License.
 
 require 'spec_helper'
-require 'open3'
+require 'integration_helper'
 
 describe 'release script', :integration do
+  include_context 'integration_helper'
 
-  it 'should return zero if success' do
-    Dir.mktmpdir do |root|
-      FileUtils.cp_r 'spec/fixtures/integration_valid/.', root
+  it 'should return zero if success',
+     app_fixture: 'integration_valid' do
 
-      with_memory_limit('1G') do
-        Open3.popen3("bin/release #{root}") do |stdin, stdout, stderr, wait_thr|
-          expect(wait_thr.value).to be_success
-        end
-      end
-
-    end
+    run("bin/release #{app_dir}") { |status| expect(status).to be_success }
   end
 
   it 'should fail to release when no containers detect' do
-    Dir.mktmpdir do |root|
-      error = Open3.capture3("bin/release #{root}")[1]
-      expect(error).to match(/No container can run the application/)
-    end
-  end
-
-  def with_memory_limit(memory_limit)
-    previous_value = ENV['MEMORY_LIMIT']
-    begin
-      ENV['MEMORY_LIMIT'] = memory_limit
-      yield
-    ensure
-      ENV['MEMORY_LIMIT'] = previous_value
+    run("bin/release #{app_dir}") do |status|
+      expect(status).not_to be_success
+      expect(stderr.string).to match(/No container can run this application/)
     end
   end
 

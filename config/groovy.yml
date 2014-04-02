@@ -15,5 +15,5 @@
 
 # Configuration for the Groovy container
 ---
-version: 2.1.+
-repository_root: "http://download.pivotal.io.s3.amazonaws.com/groovy"
+version: 2.2.+
+repository_root: "{default.repository.root}/groovy"

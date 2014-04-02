@@ -14,48 +14,50 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-require 'java_buildpack/base_component'
+require 'java_buildpack/component/base_component'
 require 'java_buildpack/framework'
+require 'java_buildpack/util/dash_case'
 require 'shellwords'
 
-module JavaBuildpack::Framework
+module JavaBuildpack
+  module Framework
 
-  # Encapsulates the functionality for contributing custom Java options to an application.
-  class JavaOpts < JavaBuildpack::BaseComponent
+    # Encapsulates the functionality for contributing custom Java options to an application.
+    class JavaOpts < JavaBuildpack::Component::BaseComponent
 
-    def initialize(context)
-      super('JAVA_OPTS', context)
-    end
-
-    def detect
-      @configuration.key?(CONFIGURATION_PROPERTY) ? @parsable_component_name : nil
-    end
-
-    def compile
-      parsed_java_opts.each do |option|
-        fail "Java option '#{option}' configures a memory region.  Use JRE configuration for this instead." if memory_option? option
+      # (see JavaBuildpack::Component::BaseComponent#detect)
+      def detect
+        @configuration.key?(CONFIGURATION_PROPERTY) ? JavaOpts.to_s.dash_case : nil
       end
-    end
 
-    def release
-      @java_opts.concat parsed_java_opts
-    end
-
-    private
-
-    CONFIGURATION_PROPERTY = 'java_opts'.freeze
-
-    def memory_option?(option)
-      option =~ /-Xms/ || option =~ /-Xmx/ || option =~ /-XX:MaxMetaspaceSize/ || option =~ /-XX:MaxPermSize/ ||
-          option =~ /-Xss/
-    end
-
-    def parsed_java_opts
-      @configuration[CONFIGURATION_PROPERTY].shellsplit.map do |java_opt|
-        java_opt.gsub(/([\s])/, '\\\\\1')
+      # (see JavaBuildpack::Component::BaseComponent#compile)
+      def compile
+        parsed_java_opts.each do |option|
+          fail "Java option '#{option}' configures a memory region.  Use JRE configuration for this instead." if memory_option? option
+        end
       end
+
+      # (see JavaBuildpack::Component::BaseComponent#release)
+      def release
+        @droplet.java_opts.concat parsed_java_opts
+      end
+
+      private
+
+      CONFIGURATION_PROPERTY = 'java_opts'.freeze
+
+      def memory_option?(option)
+        option =~ /-Xms/ || option =~ /-Xmx/ || option =~ /-XX:MaxMetaspaceSize/ || option =~ /-XX:MaxPermSize/ ||
+          option =~ /-Xss/ || option =~ /-XX:MetaspaceSize/ || option =~ /-XX:PermSize/
+      end
+
+      def parsed_java_opts
+        @configuration[CONFIGURATION_PROPERTY].shellsplit.map do |java_opt|
+          java_opt.gsub(/([\s])/, '\\\\\1')
+        end
+      end
+
     end
 
   end
-
 end
