@@ -28,6 +28,12 @@ describe JavaBuildpack::Container::Jboss do
     expect(component.detect).to include("jboss=#{version}")
   end
 
+  it 'detects ear',
+     app_fixture: 'container_tomcat_ear' do
+
+    expect(component.detect).to include("jboss=#{version}")
+  end
+
   it 'does not detect when WEB-INF is absent',
      app_fixture: 'container_main' do
 
@@ -65,6 +71,15 @@ describe JavaBuildpack::Container::Jboss do
     expect(sandbox + 'standalone/deployments/ROOT.war.dodeploy').to exist
   end
 
+  it 'creates a "ROOT.ear.dodeploy" in the deployments directory',
+     app_fixture:   'container_tomcat_ear',
+     cache_fixture: 'stub-jboss.tar.gz' do
+
+    component.compile
+
+    expect(sandbox + 'standalone/deployments/ROOT.ear.dodeploy').to exist
+  end
+
   it 'copies only the application files and directories to the ROOT webapp',
      app_fixture: 'container_tomcat',
      cache_fixture: 'stub-jboss.tar.gz' do
@@ -77,6 +92,22 @@ describe JavaBuildpack::Container::Jboss do
 
     web_inf = root_webapp + 'WEB-INF'
     expect(web_inf).to exist
+
+    expect(root_webapp + '.test-file').not_to exist
+  end
+
+  it 'copies only the ear application files and directories to the ROOT webapp',
+     app_fixture:   'container_tomcat_ear',
+     cache_fixture: 'stub-jboss.tar.gz' do
+
+    FileUtils.touch(app_dir + '.test-file')
+
+    component.compile
+
+    root_webapp = app_dir + '.java-buildpack/jboss/standalone/deployments/ROOT.ear'
+
+    meta_inf = root_webapp + 'META-INF'
+    expect(meta_inf).to exist
 
     expect(root_webapp + '.test-file').not_to exist
   end

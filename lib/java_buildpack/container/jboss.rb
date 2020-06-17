@@ -58,7 +58,7 @@ module JavaBuildpack
 
       # (see JavaBuildpack::Component::VersionedDependencyComponent#supports?)
       def supports?
-        web_inf? && !JavaBuildpack::Util::JavaMainUtils.main_class(@application)
+        (web_inf? && !JavaBuildpack::Util::JavaMainUtils.main_class(@application)) || ear?
       end
 
       private
@@ -69,16 +69,29 @@ module JavaBuildpack
       end
 
       def copy_additional_libraries
-        web_inf_lib = root + 'WEB-INF/lib'
-        @droplet.additional_libraries.each { |additional_library| FileUtils.cp_r additional_library, web_inf_lib }
+        if ear?
+          meta_inf_lib = root + "lib"
+          @droplet.additional_libraries.each { |additional_library| FileUtils.cp_r additional_library, meta_inf_lib }
+        else
+          web_inf_lib = root + 'WEB-INF/lib'
+          @droplet.additional_libraries.each { |additional_library| FileUtils.cp_r additional_library, web_inf_lib }
+        end
       end
 
       def create_dodeploy
-        FileUtils.touch(webapps + 'ROOT.war.dodeploy')
+        if ear?
+          FileUtils.touch(webapps + 'ROOT.ear.dodeploy')
+        else
+          FileUtils.touch(webapps + 'ROOT.war.dodeploy')
+        end
       end
 
       def root
-        webapps + 'ROOT.war'
+        if ear?
+          webapps + 'ROOT.ear'
+        else
+          webapps + 'ROOT.war'
+        end
       end
 
       def update_configuration
@@ -97,6 +110,10 @@ module JavaBuildpack
 
       def web_inf?
         (@application.root + 'WEB-INF').exist?
+      end
+
+      def ear?
+        (@application.root + 'META-INF/application.xml').exist?
       end
 
     end
